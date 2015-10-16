@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>All Pending Orders</title>
+<script src="/static/lib/angular/angular.min.js"></script>
+<script src="/static/lib/angular/angular-resource.min.js"></script>
+<script src="/static/js/script.js"></script>
+<script src="/static/js/services.js"></script>
+
+<!-- Standard Favicon -->
+<link rel="icon" type="image/x-icon" href="/static/img/favicon.ico" />
+
+<!-- For iPhone 4 Retina display: -->
+<link rel="apple-touch-icon-precomposed" sizes="114x114" href="/static/img/114.png">
+
+<!-- For iPad: -->
+<link rel="apple-touch-icon-precomposed" sizes="72x72" href="/static/img/72.png">
+
+<!-- For iPhone: -->
+<link rel="apple-touch-icon-precomposed" href="/static/img/57.png">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=yes">
+<link rel="stylesheet" href="/static/css/bootstrap.min.css" type="text/css" >
+<link rel="stylesheet" href="/static/css/bs_modified.css" type="text/css" >
+<script>
+var appMod = angular.module('crmapp', ['services']);
+appMod.config(['$resourceProvider', function($resourceProvider) {
+    // Don't strip trailing slashes from calculated URLs
+    $resourceProvider.defaults.stripTrailingSlashes = false;
+    }]);
+
+appMod.config(function($interpolateProvider) {
+    $interpolateProvider.startSymbol('||');
+    $interpolateProvider.endSymbol('||');
+    });
+appMod.controller('AllPendingOrdersController', ['$scope', 'PURCHASERS', 'PENDINGORDERS', 'ORDERS', function($scope, PURCHASERS, PENDINGORDERS, ORDERS) {
+
+
+    FetchPendingOrders = function(){
+    var p = PENDINGORDERS.query().$promise;
+    p.then(function(pendingOrders){
+      for(var i=0; i< pendingOrders.length; i++){
+      var o = pendingOrders[i];
+      o.dd_mmm_yyyy = DDMMMYYFromUnixTime(JSDateToUnixTime(new Date(o.Date)));
+      }
+      $scope.pendingOrders = pendingOrders;
+      }, function(error){
+      $scope.statusNote = error.status + ": " + error.data;
+      });
+    return p;
+    }
+
+    FetchPurchasers = function(){
+    StartSpinner();
+    var p = PURCHASERS.query().$promise;
+    p.then(function(purchasers){
+      $scope.purchasers = purchasers;
+      }, function(error){
+      var errMsg = error.status + ": " + error.data;
+      $scope.statusNote = errMsg;
+      });
+    return p;
+    }
+
+    StopSpinner = function(){
+      $scope.working = false;
+    }
+    StartSpinner = function(){
+      $scope.working = true;
+    }
+    AssignPurchaserNamesToOrders = function(){
+      for(var i=0; i<$scope.pendingOrders.length; i++){
+        var o = $scope.pendingOrders[i];
+        for(var j=0; j<$scope.purchasers.length; j++){
+          var p = $scope.purchasers[j];
+          if(o.PurchaserId == p.Id){
+            o.PurchaserName = p.Name;
+            break;
+          }
+        }
+      }
+    }
+
+    $scope.puntOrder = function(o){
+      StartSpinner();
+      o.PuntedItems = angular.copy(o.PendingItems);
+      o.PendingItems = [];
+      o.IsComplete = true;
+      ORDERS.save(o).$promise.then(function(order){
+          $scope.statusNote = "Order punted with id: " + order.Id;
+          o = order;
+          StopSpinner();
+          }, function(error){
+          $scope.statusNote = error.status + ": " + error.data;
+          StopSpinner();
+          });
+    }
+
+    function init(){
+      StartSpinner();
+      FetchPurchasers().then(FetchPendingOrders).then(AssignPurchaserNamesToOrders).then(StopSpinner);
+      $scope.todayDDMMYY = DDMMMYYFromUnixTime(JSDateToUnixTime(new Date()));
+    }
+    init();
+
+}]);
+
+</script>
+</head>
+<body ng-app="crmapp" ng-controller="AllPendingOrdersController">
+<div class="well">
+  <a href="/" class="hidden-print"><img class="center-block" src="/static/img/57.png" /></a>
+  <h1 class="text-center">Pending Orders</h1>
+  <div id="statusNote" ng-bind="statusNote"></div>
+  <div class="pull-right visible-print"> <small>Printed on <span ng-bind="todayDDMMYY"></span></small> </div>
+</div>
+<div ng-show="working"> <!-- show=working -->
+  <img class="center-block" src="/static/img/working.gif" />
+</div> <!-- show=working -->
+
+<div ng-show="!working"> <!-- show=!working -->
+  <div class="container">
+    <div ng-repeat="o in pendingOrders" ng-if="!o.IsComplete">
+      <div class="panel panel-info"> <!-- pending order panel -->
+        <div class="panel-heading" ng-click="showPurchaserName=!showPurchaserName">
+          <div class="row">
+            <span class="pull-left">PO#<span ng-bind="o.Number"></span> dt&nbsp;<span ng-bind="o.dd_mmm_yyyy"></span></span>
+            <span ng-if="showPurchaserName" class="text-right pull-right" ng-bind="o.PurchaserName"></span>
+          </div>
+          <div class="row" ng-show="showPurchaserName">
+            <span class="pull-left"><span class="text-left"><button class="btn btn-danger" ng-click="puntOrder(o)">Punt</button></span></span>
+            <span class="pull-right"><span class="text-right"><a class="btn btn-info " href="/order/||o.Id||">Edit</a></span></span>
+          </div>
+        </div>
+        <table class="table table-striped table-condensed panel-body">
+          <thead>
+            <tr>
+              <th>Pellet</th>
+              <th>Case</th>
+              <th>Type</th>
+              <th>Bore</th>
+              <th>Qty</th>
+              <th>Remarks</th>
+            </tr>
+          </thead>
+
+          <tr ng-repeat="item in o.PendingItems">
+            <td><span ng-bind="item.PelletSize"></span></td>
+            <td><span ng-bind="item.CaseSize"></span></td>
+            <td><span ng-bind="item.CaseType"></span></td>
+            <td ng-if="item.Type == 'TCD'"><strong><span ng-bind="item.BoreSize"></span></strong></td>
+            <td ng-if="item.Type == 'MSC'"><strong><span ng-bind="item.Name"></span></strong></td>
+            <td><span ng-bind="item.Qty"></span></td>
+            <td><span ng-bind="item.CRemarks"></span></td>
+          </tr>
+        </table>
+      </div> <!-- pending order panel -->
+
+    </div>
+  </div> <!-- container -->
+</div> <!-- show=!working -->
+</body>
+</html>

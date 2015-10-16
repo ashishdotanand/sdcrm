@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html>
+<head>
+{{ if eq .Nature "NEW" }}
+<title>RegisterPurchaser</title>
+{{ else if eq .Nature "EDIT" }}
+<title>EditPurchaser</title>
+{{ end }}
+<script src="/static/lib/angular/angular.min.js"></script>
+<script src="/static/lib/angular/angular-resource.min.js"></script>
+<script src="/static/js/script.js"></script>
+<script src="/static/js/services.js"></script>
+
+<!-- Standard Favicon -->
+<link rel="icon" type="image/x-icon" href="/static/img/favicon.ico" />
+
+<!-- For iPhone 4 Retina display: -->
+<link rel="apple-touch-icon-precomposed" sizes="114x114" href="/static/img/114.png">
+
+<!-- For iPad: -->
+<link rel="apple-touch-icon-precomposed" sizes="72x72" href="/static/img/72.png">
+
+<!-- For iPhone: -->
+<link rel="apple-touch-icon-precomposed" href="/static/img/57.png">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=yes">
+<link rel="stylesheet" href="/static/css/bootstrap.min.css" type="text/css" >
+<link rel="stylesheet" href="/static/css/bs_modified.css" type="text/css" >
+<script>
+var appMod = angular.module('crmapp', ['services']);
+appMod.config(['$resourceProvider', function($resourceProvider) {
+    // Don't strip trailing slashes from calculated URLs
+    $resourceProvider.defaults.stripTrailingSlashes = false;
+    }]);
+
+appMod.config(function($interpolateProvider) {
+    $interpolateProvider.startSymbol('||');
+    $interpolateProvider.endSymbol('||');
+    });
+appMod.controller('NewPurchasersController', ['$scope', 'PURCHASERS', function($scope, PURCHASERS) {
+    var NewOrEdit = {{.Nature }};
+
+    $scope.RegisterPurchaser = function() {
+    $scope.working = true;
+    PURCHASERS.save($scope.purchaser).$promise.then(function(purchaser){
+      $scope.statusNote = "Purchaser saved with id: " + purchaser.Id;
+      window.location = "/purchaser/" + purchaser.Id;
+      }, function(error){
+      $scope.statusNote = error.status + ": " + error.data;
+      $scope.working = false;
+      });
+    }
+
+    $scope.addTCDSKUItem = function() {
+    var items = $scope.purchaser.SKUs;
+    var newItem = {}
+    newItem["Type"]= "TCD";
+    newItem["Unit"]= "pc";
+    newItem["PelletSize"]= $scope.orphanTCDSKU.PelletSize;
+    newItem["BoreSize"]= $scope.orphanTCDSKU.BoreSize;
+    newItem["CaseSize"]= $scope.orphanTCDSKU.CaseSize;
+    newItem["CaseType"]= $scope.orphanTCDSKU.CaseType;
+    newItem["Rate"]= $scope.orphanTCDSKU.Rate;
+    newItem["CRemarks"]= $scope.orphanTCDSKU.CRemarks;
+    items.splice(items.length, 0, angular.copy(newItem));
+    $scope.orphanTCDSKU.PelletSize = "";
+    $scope.orphanTCDSKU.BoreSize = "";
+    $scope.orphanTCDSKU.CaseSize = "";
+    $scope.orphanTCDSKU.CaseType = "";
+    $scope.orphanTCDSKU.Rate = "";
+    }
+
+    $scope.addMSCSKUItem = function() {
+      var items = $scope.purchaser.SKUs;
+      var newItem = {}
+      newItem["Type"]= "MSC";
+      newItem["Name"]= $scope.orphanMSCSKU.Name;
+      newItem["Unit"]= $scope.orphanMSCSKU.Unit;
+      newItem["Rate"]= $scope.orphanMSCSKU.Rate;
+      newItem["CRemarks"]= $scope.orphanMSCSKU.CRemarks;
+      items.splice(items.length, 0, angular.copy(newItem));
+      $scope.orphanMSCSKU.Name = "";
+      $scope.orphanMSCSKU.Unit = "";
+      $scope.orphanMSCSKU.Rate = "";
+      $scope.orphanMSCSKU.CRemarks = "";
+    }
+
+    $scope.removeSKUItem = function(index) {
+      $scope.purchaser.SKUs.splice(index, 1);
+    }
+
+    init();
+
+    function init(){
+      $scope.working = true;
+      $scope.purchaser = {};
+      if(NewOrEdit == "NEW"){
+        if (Debug()){
+          $scope.purchaser.Name = "Precision Drawell";
+          $scope.purchaser.DispatchEmails = "ashishthedev@gmail.com";
+          $scope.purchaser.DefaultTaxPercentage = 2;
+          $scope.purchaser.FORMCEmails = "ashishthedev@gmail.com";
+          $scope.purchaser.TinNumber = "abcdefghijk";
+          $scope.purchaser.BillingAddress = "This is going to be the billing address. sdlkfjlsdkf glskdfg dlksfj glskdfjglksdfjglskdfjg lskdjfg lskdjfgld f";
+          $scope.purchaser.DeliveryAddress = "This is going to be the delivery address";
+          $scope.purchaser.City = "This is going to be the City";
+          $scope.purchaser.State = "This is going to be the state";
+          $scope.purchaser.Pincode = "This is going to be the pincode";
+          $scope.purchaser.EnvelopePhoneNumbers = "+919971008002; +919971008002";
+          $scope.purchaser.SMSPhoneNumbers = "+919971008002";
+          $scope.purchaser.MDPhoneNumbers = "+919971008002";
+          $scope.purchaser.CreditDays = 45;
+          $scope.purchaser.CRemarks = "These will be remarks";
+          $scope.purchaser.SKUs = [
+          {"Type": "TCD", "PelletSize":"10x08", "BoreSize":"1.25", "CaseSize":"43x28", "CaseType": "Straight", "Rate":180, "Unit": "pc"},
+          {"Type": "TCD", "PelletSize":"13x10", "BoreSize":"2.45", "CaseSize":"43x28", "CaseType": "Taper", "Rate":310, "Unit":"pc"},
+          {"Type": "MSC", "Name":"Boron Carbide 150mesh 100gm", "Unit":"Pack", "Rate": 600},
+          ];
+
+          $scope.working = false;
+        }
+      }
+      if (NewOrEdit == "EDIT"){
+        purchaserId = document.URL.split("/")[4];
+        PURCHASERS.get({id: purchaserId}).$promise.then(function(purchaser){
+            $scope.purchaser = purchaser;
+            $scope.working = false;
+            }, function(error){
+            $scope.statusNote = error.status + ": " + error.data;
+            $scope.working = false;
+            });
+      }
+      $scope.casingTypes = DefaultCaseTypes();
+    }
+
+
+}]);
+
+</script>
+</head>
+<body ng-app="crmapp" ng-controller="NewPurchasersController">
+<div class="well">
+  <a href="/"><img class="center-block" src="/static/img/57.png" /></a>
+  {{ if eq .Nature "NEW" }}
+  <h1 class="text-center">Register New Purchaser</h1>
+  {{ else if eq .Nature "EDIT" }}
+  <h1 class="text-center">Edit <span ng-bind="purchaser.Name"></span></h1>
+  {{ end }}
+  <div id="statusNote" ng-bind="statusNote"></div>
+</div>
+<div ng-show="working"> <!-- show=working -->
+  <img class="center-block" src="/static/img/working.gif" />
+</div> <!-- show=working -->
+
+<div ng-show="!working"> <!-- show=!working -->
+  <div class="container"><!-- container -->
+    <form class="form-horizontal">
+      <fieldset>
+
+        <div class="form-group">
+          <label for="Name" class="col-xs-2 control-label">Purchaser Name</label>
+          <div class="col-xs-10">
+            <input type="text" class="form-control input-lg" id="Name" ng-model="purchaser.Name" placeholder="Purchaser Name...">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="DispatchEmails" class="col-xs-2 control-label">Dispatch Email List</label>
+          <div class="col-xs-10">
+            <input type="email" class="form-control" id="DispatchEmails" ng-model="purchaser.DispatchEmails" placeholder="Dispatch Email List...">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="FORMCEmails" class="col-xs-2 control-label">FORMC Email List</label>
+          <div class="col-xs-10">
+            <input type="email" class="form-control" id="FORMCEmails" ng-model="purchaser.FORMCEmails" placeholder="FORMC Email List...">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="TinNumber" class="col-xs-2 control-label">Tin Number</label>
+          <div class="col-xs-10">
+            <input type="text" class="form-control" id="TinNumber" ng-model="purchaser.TinNumber" placeholder="TinNumber...">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="BillingAddress" class="col-xs-2 control-label">Billing Address</label>
+          <div class="col-xs-10">
+            <input type="text" class="form-control" id="BillingAddress" ng-model="purchaser.BillingAddress" placeholder="Billing Address...">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="DeliveryAddress" class="col-xs-2 control-label">Delivery Address</label>
+          <div class="col-xs-10">
+            <input type="text" class="form-control" id="DeliveryAddress" ng-model="purchaser.DeliveryAddress" placeholder="Delivery Address...">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="City" class="col-xs-2 control-label">City</label>
+          <div class="col-xs-10">
+            <input type="text" class="form-control" id="City" ng-model="purchaser.City" placeholder="City Name...">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="DefaultTaxPercentage" class="col-xs-2 control-label">Default Tax Percentage</label>
+          <div class="col-xs-10">
+            <input type="number" class="form-control" id="DefaultTaxPercentage" ng-model="purchaser.DefaultTaxPercentage" placeholder="Default Tax %...">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="State" class="col-xs-2 control-label">State</label>
+          <div class="col-xs-10">
+            <input type="text" class="form-control" id="State" ng-model="purchaser.State" placeholder="State...">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="Pincode" class="col-xs-2 control-label">Pincode</label>
+          <div class="col-xs-10">
+            <input type="text" class="form-control" id="Pincode" ng-model="purchaser.Pincode" placeholder="Pincode...">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="EnvelopePhoneNumbers" class="col-xs-2 control-label">Envelope Phone Numbers</label>
+          <div class="col-xs-10">
+            <input type="text" class="form-control" id="EnvelopePhoneNumbers" ng-model="purchaser.EnvelopePhoneNumbers" placeholder="Envelop Phonenumbers...">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="MDPhoneNumbers" class="col-xs-2 control-label">MD Phone Numbers</label>
+          <div class="col-xs-10">
+            <input type="text" class="form-control" id="MDPhoneNumbers" ng-model="purchaser.MDPhoneNumbers" placeholder="MD Phonenumbers...">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="CreditDays" class="col-xs-2 control-label">Credit Days</label>
+          <div class="col-xs-10">
+            <input type="integer" class="form-control" id="CreditDays" ng-model="purchaser.CreditDays" placeholder="Credit Days...">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="Remarks" class="col-xs-2 control-label">Remarks</label>
+          <div class="col-xs-10">
+            <input type="text" class="form-control" id="Remarks" ng-model="purchaser.CRemarks" placeholder="Conf Remarks...">
+          </div>
+        </div>
+      </fieldset>
+    </form>
+
+    <form class="form-horizontal">
+      <fieldset>
+
+        <legend>Rates Dies</legend>
+        <div class="form-group" ng-repeat="s in purchaser.SKUs">
+          <div ng-if='s.Type=="TCD"'>
+            <label class="col-xs-2 control-label">||s.BoreSize||--||s.PelletSize||--||s.CaseSize||--||s.CaseType||</label>
+            <div class="col-xs-4">
+              <span class="input-group">
+                <span class="input-group-addon">&#8377;</span>
+                <input type="text" class="form-control" ng-model="s.Rate">
+              </span>
+            </div>
+            <div class="col-xs-5">
+              <input type="text" class="form-control" ng-model="s.CRemarks">
+            </div>
+            <div class="col-xs-1">
+              <button class="form-control btn btn-danger" ng-click="removeSKUItem($index)">X</button>
+            </div>
+          </div>
+        </div>
+
+        <hr>
+
+        <div class="form-group"> <!-- form-group -->
+          <div class="col-xs-10 col-xs-offset-2">
+            <div class="row"> <!-- TC Die row-->
+              <div class="col-xs-4">
+                <input type="text" class="form-control" ng-model="orphanTCDSKU.PelletSize" placeholder="PelletSize...">
+              </div>
+              <div class="col-xs-4">
+                <input type="text" class="form-control" ng-model="orphanTCDSKU.BoreSize" placeholder="BoreSize...">
+              </div>
+              <div class="col-xs-4">
+                <input type="text" class="form-control" ng-model="orphanTCDSKU.CaseSize" placeholder="CaseSize...">
+              </div>
+              <div class="col-xs-4">
+                <select ng-model="orphanTCDSKU.CaseType" class="form-control" ng-options="t as t for t in casingTypes">
+                  <option value='' disabled selected style='display:none;'></option>
+                </select>
+              </div>
+              <div class="col-xs-8">
+                <span class="input-group">
+                  <span class="input-group-addon">&#8377;</span>
+                  <input type="number" class="form-control" ng-model="orphanTCDSKU.Rate" placeholder="Rate...">
+                </span>
+              </div>
+              <div class="col-xs-11">
+                <input type="text" class="form-control" ng-model="orphanTCDSKU.CRemarks" placeholder="Conf remarks if any...">
+              </div>
+              <div class="col-xs-1 pull-right">
+                <button class="form-control btn btn-info" ng-click="addTCDSKUItem()">+</button>
+              </div>
+            </div> <!-- TC Die row -->
+          </div>
+
+        </div> <!-- form-group -->
+
+      </fieldset>
+    </form>
+
+    <form class="form-horizontal">
+      <fieldset>
+        <legend>Rates Misc</legend>
+        <div class="form-group" ng-repeat="s in purchaser.SKUs">
+          <div ng-if='s.Type=="MSC"'>
+            <label class="col-xs-2 control-label">||s.Name||-||s.Unit||</label>
+            <div class="col-xs-4">
+              <span class="input-group">
+                <span class="input-group-addon">&#8377;</span>
+                <input type="text" class="form-control" ng-model="s.Rate">
+              </span>
+            </div>
+            <div class="col-xs-5">
+              <input type="text" class="form-control" ng-model="s.CRemarks">
+            </div>
+            <div class="col-xs-1">
+              <button class="form-control btn btn-danger" ng-click="removeSKUItem($index)">X</button>
+            </div>
+          </div>
+        </div>
+
+        <hr>
+
+        <div class="form-group">
+          <div class="col-xs-10 col-xs-offset-2">
+            <div class="row"> <!-- Misc row-->
+              <div class="col-xs-6">
+                <input type="text" class="form-control" ng-model="orphanMSCSKU.Name" placeholder="Name...">
+              </div>
+              <div class="col-xs-6">
+                <input type="text" class="form-control" ng-model="orphanMSCSKU.Unit" placeholder="Unit...">
+              </div>
+              <div class="col-xs-12">
+                <span class="input-group">
+                  <span class="input-group-addon">&#8377;</span>
+                  <input type="number" class="form-control" ng-model="orphanMSCSKU.Rate" placeholder="Rate...">
+                </span>
+              </div>
+              <div class="col-xs-11">
+                <input type="text" class="form-control" ng-model="orphanMSCSKU.CRemarks" placeholder="Conf Remarks if any...">
+              </div>
+              <div class="col-xs-1">
+                <button class="form-control btn btn-info" ng-click="addMSCSKUItem()">+</button>
+              </div>
+            </div> <!-- Msic row -->
+          </div>
+        </div>
+
+      </fieldset>
+    </form>
+
+    <div class="form-group">
+      <div class="row">
+        <div class="col-xs-10 col-xs-offset-2">
+          {{ if eq .Nature "NEW" }}
+          <button type="submit" class="form-control btn btn-primary" ng-click="RegisterPurchaser()">Create</button>
+          {{ else if eq .Nature "EDIT" }}
+          <button type="submit" class="form-control btn btn-primary" ng-click="RegisterPurchaser()">Re-Save</button>
+          {{ end }}
+        </div>
+      </div>
+    </div>
+
+  </div><!-- container -->
+
+</div> <!-- show=!working -->
+</body>
+</html>

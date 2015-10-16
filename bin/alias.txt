@@ -1,0 +1,102 @@
+;= Shortcuts to ease out the repetitive tasks in windows
+;=
+;= @echo off
+; = Invoke it like this:
+;= 1. D:\Windows\System32\cmd.exe /k setenv.bat
+;= 2. doskey /MACROFILE="%APPDIR%\alias.txt"
+;= rem Call DOSKEY and use this file as the macrofile
+;= %SystemRoot%\system32\doskey /listsize=1000 /macrofile=%0%
+;= rem In batch mode, jump to the end of the file
+;= goto end
+;= rem *    History:
+;= rem * 26/11/2012: File Created
+
+
+
+
+;= rem ******************************************************************
+;=     meta aliases
+;= rem ******************************************************************
+
+re=pushd %XDATDOCSDIR%\bin && doskey /Macrofile=alias.txt && popd
+al=pushd %XDATDOCSDIR%\bin && gvim alias.txt && popd
+
+;= rem ******************************************************************
+;=     cmdline aliases
+;= rem ******************************************************************
+
+q=exit
+..=cd..
+...=cd..\..
+....=cd..\..\..
+mv=move $*
+ff=@echo "Finding for file name" && where /T /R . *$**
+ffe=@echo "Finding for file name" && where /T /R . $*
+fs=findstr /i /s /n $*
+ls=dir /x $*
+lw=dir /w $*
+la=dir /x /a $*
+cp=copy $*
+mv=move $*
+cd=pushd $*
+gds=pushd b:\desktop
+ghome = pushd %HOMEPATH%
+ggoogle = pushd "%PROGRAMFILES%\Google\google_appengine"
+gydl = pushd "B:\\YoutubeVideosDownloaded\\"
+
+
+fip=@echo "Finding inside .py files" && findstr /i /s /n $* *.py
+fit=@echo "Finding inside .txt files" && findstr /i /s /n $* *.txt
+fih=@echo "Finding inside .html files" && findstr /i /s /n $* *.html
+fia=@echo "Finding inside all files" && findstr /i /s /n $* *.*
+fig=@echo "Finding inside all go files" && findstr /i /s /n $* *.go
+fij=@echo "Finding inside all js files" && findstr /i /s /n $* *.js
+fic=@echo "Finding inside all code files" && findstr /i /s /n $* *.py *.html *.js *.css *.go
+
+
+;= rem ******************************************************************
+;=     git aliases
+;= rem ******************************************************************
+
+gitclean = git gc --aggressive --prune
+gitamend = git commit --amend --no-edit
+gcam = git commit -am $*
+gcmb = git checkout -b $*
+gcb = git checkout $*
+
+
+;= rem ******************************************************************
+;=     misc aliases
+;= rem ******************************************************************
+g=gvim $*
+hugo= b:\\Tools\\hugo\\hugo.exe $*
+s = "c:\\Program Files\\sublime text 2\\sublime_text.exe" $*
+
+
+;= rem ******************************************************************
+;=     Google App Engine shortcuts
+;= rem ******************************************************************
+;= rem Whichever project you are in the following shortcuts gonna work.
+gcloudlogin = gcloud auth login --no-launch-browser
+gproj = pushd %XDATDOCSDIR%\app
+goliveproj = pushd %XDATDOCSDIR%\app && goapp test && appcfg.py update . --email="ashishthedev@gmail.com" --version="live" --noauth_local_webserver --oauth2 $*
+
+godevproj = pushd %XDATDOCSDIR%\app && goapp test && appcfg.py update . --email="ashishthedev@gmail.com" --version="dev" --noauth_local_webserver --oauth2 $*
+godevprojnotest = pushd %XDATDOCSDIR%\app && appcfg.py update . --email="ashishthedev@gmail.com" --version="dev" --noauth_local_webserver --oauth2 $*
+
+godemoproj = pushd %XDATDOCSDIR%\app && goapp test && appcfg.py update . --email="ashishthedev@gmail.com" --version="demo" --noauth_local_webserver --oauth2 $*
+
+rollbackprojlive = pushd %XDATDOCSDIR%\app && appcfg.py rollback . --email="ashishthedev@gmail.com" --version="live" --noauth_local_webserver --oauth2 $*
+
+rollbackprojdev = pushd %XDATDOCSDIR%\app && appcfg.py rollback .  --email="ashishthedev@gmail.com" --version="dev" --noauth_local_webserver --oauth2 $*
+
+
+spinup = pushd %XDATDOCSDIR% && spinup_local_gae_server.bat && popd
+
+;= :end
+;= rem ******************************************************************
+;= rem * EOF - Don't remove the following line.  It clears out the ';'
+;= rem * macro. Were using it because there is no support for comments
+;= rem * in a DOSKEY macro file.
+;= rem ******************************************************************
+;=

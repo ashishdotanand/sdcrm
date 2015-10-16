@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html>
+<head>
+{{ if eq .Nature "NEW" }}
+<title>PunchOrder</title>
+{{ else if eq .Nature "EDIT" }}
+<title>EditOrder</title>
+{{ end }}
+<script src="/static/lib/angular/angular.min.js"></script>
+<script src="/static/lib/angular/angular-resource.min.js"></script>
+<script src="/static/js/script.js"></script>
+<script src="/static/js/services.js"></script>
+
+<!-- Standard Favicon -->
+<link rel="icon" type="image/x-icon" href="/static/img/favicon.ico" />
+
+<!-- For iPhone 4 Retina display: -->
+<link rel="apple-touch-icon-precomposed" sizes="114x114" href="/static/img/114.png">
+
+<!-- For iPad: -->
+<link rel="apple-touch-icon-precomposed" sizes="72x72" href="/static/img/72.png">
+
+<!-- For iPhone: -->
+<link rel="apple-touch-icon-precomposed" href="/static/img/57.png">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=yes">
+<link rel="stylesheet" href="/static/css/bootstrap.min.css" type="text/css" >
+<link rel="stylesheet" href="/static/css/bs_modified.css" type="text/css" >
+<script>
+var appMod = angular.module('crmapp', ['services']);
+appMod.config(['$resourceProvider', function($resourceProvider) {
+    // Don't strip trailing slashes from calculated URLs
+    $resourceProvider.defaults.stripTrailingSlashes = false;
+    }]);
+appMod.config(function($interpolateProvider) {
+    $interpolateProvider.startSymbol('||');
+    $interpolateProvider.endSymbol('||');
+    });
+
+appMod.controller('NewOrdersController', ['$scope', '$q', 'ORDERS', 'SKUS', 'PURCHASERS', function($scope, $q, ORDERS, SKUS, PURCHASERS) {
+    var NewOrEdit = {{.Nature }};
+
+    function FetchSuppliers(){
+    $scope.availableSuppliers = ["Standard", "Omega"];
+    }
+    $scope.DefaultCaseTypes = DefaultCaseTypes();
+    $scope.DefaultPelletSizes = DefaultPelletSizes();
+    $scope.DefaultCaseSizes = DefaultCaseSizes();
+
+
+    $scope.DateChanged = function() {
+    $scope.dateDiffFromTodayAsText = GetDateDiffAsText($scope.order.Date);
+    $scope.order.DateAsSeconds = JSDateToUnixTime($scope.order.Date);
+    }
+
+
+    $scope.PurchaserChange = function() {
+    $scope.order.PurchaserId = $scope.selectedPurchaser.Id;
+    InitializeOrderedItems();
+    }
+
+    $scope.punchOrder = function() {
+      $scope.working = true;
+      ORDERS.save($scope.order).$promise.then(function(order){
+          $scope.statusNote = "Order saved with id: " + order.Id;
+          window.location = "/order/" + order.Id;
+          }, function(error){
+          $scope.statusNote = error.status + ": " + error.data;
+          StopSpinner();
+          });
+    }
+
+    FetchPurchasers = function(){
+      $scope.working = true;
+      var p = PURCHASERS.query().$promise;
+      p.then(function(purchasers){
+          $scope.purchasers = purchasers;
+          }, function(error){
+          var errMsg = error.status + ": " + error.data;
+          $scope.statusNote = errMsg;
+          });
+      return p;
+    }
+
+    FetchOrder = function(orderId){
+      orderId = document.URL.split("/")[4];
+      var p = ORDERS.get({id: orderId}).$promise;
+      p.then(function(order){
+          $scope.order = order;
+          for(var i=0; i<$scope.purchasers.length; i++){
+          var p = $scope.purchasers[i];
+          if(p.Id == order.PurchaserId){
+          $scope.selectedPurchaser = p;
+          }
+          }
+          $scope.order.Date = new Date(order.Date);
+          }, function(error){
+          var errMsg = error.status + ": " + error.data;
+          $scope.statusNote = errMsg;
+          });
+      return p;
+    }
+
+    StopSpinner = function(){
+      $scope.working = false;
+    }
+    FetchSuppliers();
+
+    InitializeOrderedItems = function(){
+      var invoicableItems = angular.copy($scope.selectedPurchaser.SKUs);
+      for(var i = 0; i < invoicableItems.length; i++){
+        invoicableItems[i].Qty = 1;
+      }
+
+      $scope.order.OrderedItems = invoicableItems;
+      console.log("Ordered Items length: " + $scope.order.OrderedItems.length);
+      return;
+    }
+    init();
+    $scope.OrderTotalQty = function(){
+      var oItems = $scope.order.OrderedItems;
+      var t = 0;
+      for(var i=0; i < oItems.length; i++) {
+        var oItem = oItems[i];
+        t += parseInt(oItem.Qty);
+      }
+      return t;
+    }
+
+    function init(){
+      $scope.working = true;
+      $scope.order = {};
+      $scope.order.OrderedItems = [];
+
+      if(NewOrEdit == "NEW"){
+        $scope.order.Date = new Date();
+        if (Debug()){
+          $scope.order.SupplierName = "Standard";
+          $scope.order.Date = new Date();
+          $scope.order.Number = "111";
+          FetchPurchasers().then(StopSpinner).then(function(){
+              if (Debug()){
+              $scope.selectedPurchaser = $scope.purchasers[0];
+              $scope.PurchaserChange();
+              }
+              });
+        }
+      }
+      if (NewOrEdit == "EDIT"){
+        FetchPurchasers().then(FetchOrder).then(StopSpinner);
+      }
+    }
+
+}]);
+
+</script>
+</head>
+<body ng-app="crmapp" ng-controller="NewOrdersController">
+<div class="well">
+  <a href="/"><img class="center-block" src="/static/img/57.png" /></a>
+  {{ if eq .Nature "NEW" }}
+  <h1 class="text-center">Punch Order</h1>
+  {{ else if eq .Nature "EDIT" }}
+  <h1 class="text-center">Edit Order</h1>
+  {{ end }}
+  <div id="statusNote" ng-bind="statusNote"></div>
+</div>
+<div ng-show="working"> <!-- show=working -->
+  <img class="center-block" src="/static/img/working.gif" />
+</div> <!-- show=working -->
+
+<div ng-show="!working"> <!-- show=!working -->
+  <div class="container">
+    <div class="row"><!-- PO Global Details Row -->
+      <div class="col-xs-6">
+        <select ng-model="order.SupplierName" class="form-control" ng-options="k as k for k in availableSuppliers">
+          <option value='' disabled selected style='display:none;'></option>
+        </select>
+      </div>
+      <div class="col-xs-6">
+        <div class="row">
+          <select ng-model="selectedPurchaser" class="form-control" ng-options="k as k.Name for k in purchasers" ng-change="PurchaserChange()">
+            <option value='' disabled selected style='display:none;'></option>
+          </select>
+        </div>
+      </div>
+      <div class="col-xs-6">
+        <input ng-model="order.Number" type="text" class="form-control" placeholder="PO#"></input>
+      </div>
+      <div class="col-xs-6">
+        <input required class="center-block" autofocus="true" title="PO Date" type="date" ng-model="order.Date" ng-change="DateChanged()" />
+        <div class="text-center" ng-bind="dateDiffFromTodayAsText"></div>
+      </div>
+    </div><!-- PO Global Details Row -->
+
+    <hr>
+
+    <div ng-show="order.SupplierName && selectedPurchaser && order.Number && order.Date">
+      <div><!-- showorder -->
+        <div ng-show="(order.OrderedItems.length > 0)"> <!-- ngshow order -->
+
+          <div class="well">
+            <h3 class="text-center">Order Preview</h3>
+            <div class="panel panel-success"> <!-- locked order panel -->
+              <table class="table table-striped table-condensed panel-body">
+                <thead>
+                  <tr>
+                    <th>Pellet</th>
+                    <th>Case</th>
+                    <th>Type</th>
+                    <th>Bore/Item</th>
+                    <th>Qty</th>
+                    <th>Unit</th>
+                    <th>Rate</th>
+                    <th>Remarks</th>
+                  </tr>
+                </thead>
+                <tfoot>
+                  <tr>
+                    <td>Total:</td>
+                    <td> </td>
+                    <td> </td>
+                    <td> </td>
+                    <td> <b><span ng-bind="OrderTotalQty()"></span></b> </td>
+                    <td> </td>
+                    <td> </td>
+                    <td> </td>
+                  </tr>
+                </tfoot>
+                <tr ng-repeat="oItem in order.OrderedItems" ng-if="oItem.Qty > 0">
+                  <td><span ng-bind="oItem.PelletSize"></span></td>
+                  <td><span ng-bind="oItem.CaseSize"></span></td>
+                  <td><span ng-bind="oItem.CaseType"></span></td>
+                  <td ng-if="oItem.Type=='TCD'"><strong><span ng-bind="oItem.BoreSize"></span></strong></td>
+                  <td ng-if="oItem.Type=='MSC'"><strong><span ng-bind="oItem.Name"></span></strong></td>
+                  <td><span ng-bind="oItem.Qty"></span></td>
+                  <td><span>&#8377;</span><span ng-bind="oItem.Rate"></span></td>
+                  <td><span ng-bind="oItem.Unit"></span></td>
+                  <td><span ng-bind="oItem.CRemarks" class="red"></span></td>
+                </tr>
+
+              </table>
+            </div> <!-- locked order panel -->
+            <div class="row">
+              <div class="col-xs-12 col-sm-offset-2 col-sm-8">
+                {{ if eq .Nature "NEW" }}
+                <button ng-click="punchOrder()" class="btn btn-lg btn-info btn-block">Punch Order</button>
+                {{ else if eq .Nature "EDIT" }}
+                <button ng-click="punchOrder()" class="btn btn-lg btn-info btn-block">Re-save Order</button>
+                {{ end }}
+              </div>
+            </div>
+          </div>
+
+          <hr>
+
+        </div> <!--ngshow order -->
+      </div><!-- showorder -->
+
+      <form>
+        <div class="well">
+          <h3 class="text-center"> Input Order</h3>
+          <div class="panel panel-warning"> <!-- sku templates panel -->
+            <table class="table table-striped table-condensed panel-body">
+              <thead>
+                <tr>
+                  <th>Pellet</th>
+                  <th>Case</th>
+                  <th>Type</th>
+                  <th>Bore</th>
+                  <th>Qty</th>
+                  <th>Unit</th>
+                  <th>Rate</th>
+                  <th>Remarks</th>
+                  <th></th>
+                </tr>
+              </thead>
+
+              <tr ng-repeat="item in order.OrderedItems">
+                <td><span ng-bind="item.PelletSize"></span></td>
+                <td><span ng-bind="item.CaseSize"></span></td>
+                <td><span ng-bind="item.CaseType"></span></td>
+                <td ng-if="item.Type == 'TCD'"><span ng-bind="item.BoreSize"></span></td>
+                <td ng-if="item.Type == 'MSC'"><span ng-bind="item.Name"></span></td>
+                <td><span class="input-group"><span class="input-group-addon">Qty</span><input type="number" class="form-control col-xs-8" ng-model="item.Qty"></span></td>
+                <td><span ng-bind="item.Unit"></span></td>
+                <td><span>&#8377;</span><span ng-bind="item.Rate"></span></td>
+                <td><input ng-model="item.CRemarks" type="text" class="form-control"></input></td>
+              </tr>
+            </table>
+          </div> <!-- sku templates panel -->
+
+        </div><!-- well-->
+      </form>
+
+      {{ if eq .Nature "EDIT" }}
+      <hr>
+      <div ng-show="order.IsPenindg"> <!-- ngshow pending -->
+
+        <div class="well">
+          <h3 class="text-center"> Pending Items In This Order</h3>
+          <div class="panel panel-success"> <!-- locked order panel -->
+            <table class="table table-striped table-condensed panel-body">
+              <thead>
+                <tr>
+                  <th>Pellet</th>
+                  <th>Case</th>
+                  <th>Type</th>
+                  <th>Bore/Item</th>
+                  <th>Qty</th>
+                  <th>Rate</th>
+                  <th>Unit</th>
+                  <th>Remarks</th>
+                </tr>
+              </thead>
+              <tr ng-repeat="oItem in order.PendingItems">
+                <td><span ng-bind="oItem.PelletSize"></span></td>
+                <td><span ng-bind="oItem.CaseSize"></span></td>
+                <td><span ng-bind="oItem.CaseType"></span></td>
+                <td ng-if="oItem.Type=='TCD'"><strong><span ng-bind="oItem.BoreSize"></span></strong></td>
+                <td ng-if="oItem.Type=='MSC'"><strong><span ng-bind="oItem.Name"></span></strong></td>
+                <td><span ng-bind="oItem.Qty"></span></td>
+                <td><span>&#8377;</span><span ng-bind="oItem.Rate"></span></td>
+                <td><span ng-bind="oItem.Unit"></span></td>
+                <td><span ng-bind="oItem.CRemarks" class="red"></span></td>
+              </tr>
+
+            </table>
+          </div> <!-- locked order panel -->
+        </div>
+
+        <hr>
+
+      </div> <!--ngshow Pending order -->
+      {{ end }}
+
+
+    </div><!-- ng-show-->
+  </div> <!-- container -->
+</div> <!-- show=!working -->
+</body>
+</html>

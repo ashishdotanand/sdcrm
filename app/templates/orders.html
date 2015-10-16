@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>All Orders</title>
+<script src="/static/lib/angular/angular.min.js"></script>
+<script src="/static/lib/angular/angular-resource.min.js"></script>
+<script src="/static/js/script.js"></script>
+<script src="/static/js/services.js"></script>
+
+<!-- Standard Favicon -->
+<link rel="icon" type="image/x-icon" href="/static/img/favicon.ico" />
+
+<!-- For iPhone 4 Retina display: -->
+<link rel="apple-touch-icon-precomposed" sizes="114x114" href="/static/img/114.png">
+
+<!-- For iPad: -->
+<link rel="apple-touch-icon-precomposed" sizes="72x72" href="/static/img/72.png">
+
+<!-- For iPhone: -->
+<link rel="apple-touch-icon-precomposed" href="/static/img/57.png">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=yes">
+<link rel="stylesheet" href="/static/css/bootstrap.min.css" type="text/css" >
+<link rel="stylesheet" href="/static/css/bs_modified.css" type="text/css" >
+<script>
+var appMod = angular.module('crmapp', ['services']);
+appMod.config(['$resourceProvider', function($resourceProvider) {
+    // Don't strip trailing slashes from calculated URLs
+    $resourceProvider.defaults.stripTrailingSlashes = false;
+    }]);
+
+appMod.config(function($interpolateProvider) {
+    $interpolateProvider.startSymbol('||');
+    $interpolateProvider.endSymbol('||');
+    });
+appMod.controller('AllOrdersController', ['$scope', 'PURCHASERS', 'ORDERS', function($scope, PURCHASERS, ORDERS) {
+
+
+    FetchOrders = function(){
+    var p = ORDERS.query().$promise;
+    p.then(function(orders){
+      for(var i=0; i< orders.length; i++){
+      var o = orders[i];
+      o.dd_mmm_yyyy = DDMMMYYFromUnixTime(JSDateToUnixTime(new Date(o.Date)));
+      }
+      $scope.orders = orders;
+      }, function(error){
+      $scope.statusNote = error.status + ": " + error.data;
+      });
+    return p;
+    }
+
+    FetchPurchasers = function(){
+    StartSpinner();
+    var p = PURCHASERS.query().$promise;
+    p.then(function(purchasers){
+      $scope.purchasers = purchasers;
+      }, function(error){
+      var errMsg = error.status + ": " + error.data;
+      $scope.statusNote = errMsg;
+      });
+    return p;
+    }
+
+    StopSpinner = function(){
+      $scope.working = false;
+    }
+    StartSpinner = function(){
+      $scope.working = true;
+    }
+    AssignPurchaserNamesToOrders = function(){
+      for(var i=0; i<$scope.orders.length; i++){
+        var o = $scope.orders[i];
+        for(var j=0; j<$scope.purchasers.length; j++){
+          var p = $scope.purchasers[j];
+          if(o.PurchaserId == p.Id){
+            o.PurchaserName = p.Name;
+            break;
+          }
+        }
+      }
+    }
+
+    function init(){
+      StartSpinner();
+      FetchPurchasers().then(FetchOrders).then(AssignPurchaserNamesToOrders).then(StopSpinner);
+    }
+    init();
+
+}]);
+
+</script>
+</head>
+<body ng-app="crmapp" ng-controller="AllOrdersController">
+<div class="well">
+  <a href="/"><img class="center-block" src="/static/img/57.png" /></a>
+  <h1 class="text-center">All Orders</h1>
+  <div id="statusNote" ng-bind="statusNote"></div>
+</div>
+<div ng-show="working"> <!-- show=working -->
+  <img class="center-block" src="/static/img/working.gif" />
+</div> <!-- show=working -->
+
+<div ng-show="!working"> <!-- show=!working -->
+  <div class="container">
+    <div ng-repeat="o in orders">
+      <div class="row">
+        <a href="/order/||o.Id||"><span class="col-xs-5" ng-bind="o.PurchaserName"></span><span class="col-xs-3" ng-bind="o.Number"></span><span class="col-xs-4" ng-bind="o.dd_mmm_yyyy"></span></a>
+      </div>
+    </div>
+  </div> <!-- container -->
+</div> <!-- show=!working -->
+</body>
+</html>

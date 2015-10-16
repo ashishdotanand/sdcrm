@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>All Invoices</title>
+<script src="/static/lib/angular/angular.min.js"></script>
+<script src="/static/lib/angular/angular-resource.min.js"></script>
+<script src="/static/js/script.js"></script>
+<script src="/static/js/services.js"></script>
+
+<!-- Standard Favicon -->
+<link rel="icon" type="image/x-icon" href="/static/img/favicon.ico" />
+
+<!-- For iPhone 4 Retina display: -->
+<link rel="apple-touch-icon-precomposed" sizes="114x114" href="/static/img/114.png">
+
+<!-- For iPad: -->
+<link rel="apple-touch-icon-precomposed" sizes="72x72" href="/static/img/72.png">
+
+<!-- For iPhone: -->
+<link rel="apple-touch-icon-precomposed" href="/static/img/57.png">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=yes">
+<link rel="stylesheet" href="/static/css/bootstrap.min.css" type="text/css" >
+<link rel="stylesheet" href="/static/css/bs_modified.css" type="text/css" >
+<script>
+var appMod = angular.module('crmapp', ['services']);
+appMod.config(['$resourceProvider', function($resourceProvider) {
+    // Don't strip trailing slashes from calculated URLs
+    $resourceProvider.defaults.stripTrailingSlashes = false;
+    }]);
+
+appMod.config(function($interpolateProvider) {
+    $interpolateProvider.startSymbol('||');
+    $interpolateProvider.endSymbol('||');
+    });
+appMod.controller('AllInvoicesController', ['$scope', 'INVOICES', function($scope, INVOICES) {
+
+    function init(){
+
+    $scope.working = true;
+    INVOICES.query().$promise.then(function(invoices){
+      $scope.working = false;
+      $scope.invoices = invoices;
+      }, function(error){
+      $scope.statusNote = error.status + ": " + error.data;
+      $scope.working = false;
+      });
+    }
+    init();
+
+    }]);
+
+</script>
+</head>
+<body ng-app="crmapp" ng-controller="AllInvoicesController">
+<div class="well">
+  <a href="/"><img class="center-block" src="/static/img/57.png" /></a>
+  <h1 class="text-center">All Invoices</h1>
+  <div id="statusNote" ng-bind="statusNote"></div>
+</div>
+<div ng-show="working"> <!-- show=working -->
+  <img class="center-block" src="/static/img/working.gif" />
+</div> <!-- show=working -->
+
+<div ng-show="!working"> <!-- show=!working -->
+  <div class="container">
+    <div ng-repeat="o in invoices">
+      <div class="row">
+        <a href="/invoice/||o.Id||"><span ng-bind="o.Id"></span></a>
+      </div>
+    </div>
+  </div> <!-- container -->
+</div> <!-- show=!working -->
+</body>
+</html>
